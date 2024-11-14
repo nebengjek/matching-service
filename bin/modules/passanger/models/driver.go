@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type User struct {
@@ -9,6 +11,13 @@ type User struct {
 	FullName     string `json:"fullName" bson:"fullName" validate:"required,min=3,max=100"`
 	MobileNumber string `json:"mobileNumber" bson:"mobileNumber" validate:"required"`
 	Completed    bool   `'json:"completed" bson:"completed"`
+}
+
+type DriverAvailable struct {
+	ID       primitive.ObjectID `bson:"_id,omitempty"`
+	DriverID string             `bson:"driverId"`
+	SocketID string             `bson:"socketId"`
+	Status   bool               `bson:"status"`
 }
 
 type WorkLog struct {
@@ -42,17 +51,9 @@ type RouteSummary struct {
 	BestRouteDuration string  `json:"bestRouteDuration"`
 }
 
-type MetaData struct {
-	SenderID string `json:"senderId" bson:"senderId"`
-	UserID   string `json:"userId" bson:"userId"`
-	DriverID string `json:"driverId" bson:"driverId"`
-}
-
-type DriverAvailable struct {
-	Longitude string   `json:"longitude" bson:"longitude"`
-	Latitude  string   `json:"latitude" bson:"longitude"`
-	MetaData  MetaData `json:"metadata" bson:"metadata"`
-	Available bool     `json:"available" bson:"available"`
+type RequestRide struct {
+	RouteSummary RouteSummary `json:"routeSummary" bson:"routeSummary"`
+	UserId       string       `json:"userId" bson:"userId"`
 }
 
 type BroadcastPickupPassanger struct {

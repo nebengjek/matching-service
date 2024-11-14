@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	driver "matching-service/bin/modules/driver"
-	"matching-service/bin/modules/driver/models"
+	driver "matching-service/bin/modules/passanger"
+	"matching-service/bin/modules/passanger/models"
 	kafkaPkgConfluent "matching-service/bin/pkg/kafka/confluent"
 	"matching-service/bin/pkg/log"
 
@@ -32,10 +32,10 @@ func (i passangerHandler) HandleMessage(message *k.Message) {
 		return
 	}
 
-	if err := i.driverUsecaseCommand.BroadcastPickupPassanger(models.RequestRide{
+	if err := i.driverUsecaseCommand.BroadcastPickupPassanger(context.Background(), models.RequestRide{
 		UserId:       msg.UserId,
 		RouteSummary: msg.RouteSummary,
-	}, context.Background()); err != nil {
+	}); err != nil {
 		log.GetLogger().Error("consumer", "BroadcastPickupPassanger", err.Error(), string(message.Value))
 		return
 	}

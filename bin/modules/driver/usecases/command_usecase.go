@@ -2,11 +2,11 @@ package usecases
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	driver "matching-service/bin/modules/driver"
 	"matching-service/bin/modules/driver/models"
+	httpError "matching-service/bin/pkg/http-error"
 	"matching-service/bin/pkg/log"
 	"matching-service/bin/pkg/utils"
 
@@ -27,40 +27,11 @@ func NewCommandUsecase(mq driver.MongodbRepositoryQuery, mc driver.MongodbReposi
 	}
 }
 
-func (c *commandUsecase) BroadcastPickupPassanger(payload models.RequestRide, ctx context.Context) error {
-	key := fmt.Sprintf("USER:ROUTE:%s", payload.UserId)
-	var tripPlan models.RouteSummary
-	redisData, errRedis := c.redisClient.Get(ctx, key).Result()
-	if errRedis != nil || redisData == "" {
-		log.GetLogger().Error("command_usecase", fmt.Sprintf("Error get data from redis: %v", errRedis), "BroadcastPickupPassanger", utils.ConvertString(errRedis))
-		return errRedis
+func (c *commandUsecase) DriverAvailable(ctx context.Context, payload models.DriverAvailable) error {
+	driver := <-c.driverRepositoryCommand.UpsertDriver(ctx, payload)
+	if driver.Error != nil {
+		log.GetLogger().Error("command_usecase", fmt.Sprintf("Error Failed update driver-available: %v", driver.Error), "DriverAvailable", utils.ConvertString(driver.Error))
+		return httpError.InternalServerError(fmt.Sprintf("Failed update driver-available: %v", driver.Error))
 	}
-	err := json.Unmarshal([]byte(redisData), &tripPlan)
-	if err != nil {
-		log.GetLogger().Error("command_usecase", fmt.Sprintf("Error unmarshal tripdata: %v", err), "FindDriver", utils.ConvertString(err))
-		return err
-	}
-	radius := 1.0
-	drivers, err := c.redisClient.GeoRadius(ctx, "drivers-locations", tripPlan.Route.Origin.Longitude, tripPlan.Route.Origin.Latitude, &redis.GeoRadiusQuery{
-		Radius:    radius,
-		Unit:      "km",
-		WithDist:  true,
-		WithCoord: true,
-		Sort:      "ASC",
-	}).Result()
-
-	if err != nil {
-		log.GetLogger().Error("command_usecase", fmt.Sprintf("Error searching drivers: %v", err), "FindDriver", utils.ConvertString(err))
-		return err
-	}
-	if len(drivers) > 0 {
-		// get data driver-available
-		// data := {
-		// 	driverId,socketId
-		// }
-		// loop then produce event to (send-broadcast,data)
-	}
-	// send event notif no driver available again
-	//
 	return nil
 }

@@ -5,9 +5,9 @@ import (
 	kafkaPkgConfluent "matching-service/bin/pkg/kafka/confluent"
 )
 
-func InitPassangerEventHandler(passanger driver.UsecaseCommand, kc kafkaPkgConfluent.Consumer) {
+func InitPassangerEventHandler(driver driver.UsecaseCommand, kc kafkaPkgConfluent.Consumer) {
 
-	kc.SetHandler(NewPassangerConsumer(passanger))
-	kc.Subscribe("request-ride")
+	kc.SetHandler(NewDriverConsumer(driver))
+	kc.Subscribe("driver-available")
 
 }

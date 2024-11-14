@@ -26,21 +26,20 @@ func (c commandMongodbRepository) NewObjectID(ctx context.Context) string {
 	return primitive.NewObjectID().Hex()
 }
 
-func (c commandMongodbRepository) UpsertBeacon(data models.WorkLog, ctx context.Context) <-chan utils.Result {
+func (c commandMongodbRepository) UpsertDriver(ctx context.Context, data models.DriverAvailable) <-chan utils.Result {
 	output := make(chan utils.Result)
 
 	go func() {
 		defer close(output)
 		err := c.mongoDb.UpsertOne(mongodb.UpsertOne{
-			CollectionName: "work-log",
+			CollectionName: "driver-available",
 			Filter: bson.M{
-				"driverId": data.DriverID,
-				"workdate": data.WorkDate,
+				"driverId": data.MetaData.DriverID,
 			},
 			Document: bson.M{
-				"driverId": data.DriverID,
-				"workdate": data.WorkDate,
-				"log":      data.Log,
+				"driverId": data.MetaData.DriverID,
+				"socketId": data.MetaData.SenderID,
+				"status":   data.Available,
 			},
 		}, ctx)
 		if err != nil {

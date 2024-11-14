@@ -21,6 +21,8 @@ type envConfig struct {
 	ConfigCors        string
 	IvKey             string
 	KafkaUrl          string
+	KafkaUsername     string
+	KafkaPassword     string
 	LogLevel          string
 	LogstashHost      string
 	LogstashPort      string
@@ -98,7 +100,9 @@ func init() {
 		CipherKey:            os.Getenv("AES_KEY"),
 		ConfigCors:           os.Getenv("CORS_CONFIG"),
 		IvKey:                "",
-		KafkaUrl:             os.Getenv("KAFKA_HOST_URL"),
+		KafkaUrl:             os.Getenv("KAFKA_HOST"),
+		KafkaUsername:        os.Getenv("KAFKA_USERNAME"),
+		KafkaPassword:        os.Getenv("KAFKA_PASSWORD"),
 		LogLevel:             os.Getenv("LOG_LEVEL"),
 		LogstashHost:         os.Getenv("LOGSTASH_HOST"),
 		LogstashPort:         os.Getenv("LOGSTASH_PORT"),

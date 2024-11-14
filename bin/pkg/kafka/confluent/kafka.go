@@ -23,7 +23,6 @@ type KafkaConfig struct {
 	Username      string
 	Password      string
 	Address       string
-	CA            string
 	SaslMechanism string
 }
 
@@ -33,9 +32,8 @@ func InitKafkaConfig() {
 
 	kafkaConfig = KafkaConfig{
 		Address:       config.GetConfig().KafkaUrl,
-		Username:      "",
-		Password:      "",
-		CA:            "",
+		Username:      config.GetConfig().KafkaUsername,
+		Password:      config.GetConfig().KafkaPassword,
 		SaslMechanism: "PLAIN",
 	}
 }
@@ -52,9 +50,7 @@ func (kc KafkaConfig) GetKafkaConfig() *k.ConfigMap {
 		kafkaCfg["sasl.username"] = kc.Username
 		kafkaCfg["sasl.password"] = kc.Password
 		kafkaCfg["security.protocol"] = "sasl_ssl"
-		kafkaCfg["ssl.ca.location"] = kc.CA
 	}
-
 	kafkaCfg.SetKey("bootstrap.servers", kc.Address)
 	kafkaCfg.SetKey("group.id", config.GetConfig().AppName)
 	kafkaCfg.SetKey("retry.backoff.ms", 500)

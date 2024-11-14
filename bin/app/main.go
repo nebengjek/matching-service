@@ -13,6 +13,11 @@ import (
 
 	"matching-service/bin/config"
 
+	passangerHandler "matching-service/bin/modules/passanger/handlers"
+	passangerRepoCommands "matching-service/bin/modules/passanger/repositories/commands"
+	passangerRepoQueries "matching-service/bin/modules/passanger/repositories/queries"
+	passangerUsecase "matching-service/bin/modules/passanger/usecases"
+
 	driverHandler "matching-service/bin/modules/driver/handlers"
 	driverRepoCommands "matching-service/bin/modules/driver/repositories/commands"
 	driverRepoQueries "matching-service/bin/modules/driver/repositories/queries"
@@ -21,7 +26,6 @@ import (
 
 	"matching-service/bin/pkg/apm"
 	"matching-service/bin/pkg/databases/mongodb"
-	"matching-service/bin/pkg/utils"
 
 	"matching-service/bin/pkg/validator"
 
@@ -91,36 +95,32 @@ func main() {
 
 func setConfluentEvents() {
 	redisClient := redis.GetClient()
-	// kafkaProducer, err := kafkaConfluent.NewProducer(kafkaConfluent.GetConfig().GetKafkaConfig(), log.GetLogger())
-	// if err != nil {
-	// 	panic(err)
-	// }
+	kafkaProducer, err := kafkaConfluent.NewProducer(kafkaConfluent.GetConfig().GetKafkaConfig(), log.GetLogger())
+	if err != nil {
+		panic(err)
+	}
+	passangerQueryMongoRepo := passangerRepoQueries.NewQueryMongodbRepository(mongodb.NewMongoDBLogger(mongodb.GetSlaveConn(), mongodb.GetSlaveDBName(), log.GetLogger()))
+	passangerCommandRepo := passangerRepoCommands.NewCommandMongodbRepository(mongodb.NewMongoDBLogger(mongodb.GetSlaveConn(), mongodb.GetSlaveDBName(), log.GetLogger()))
+	passangerCommandUsecase := passangerUsecase.NewCommandUsecase(passangerQueryMongoRepo, passangerCommandRepo, redisClient, kafkaProducer)
+	passangerConsumer, errPassanger := kafkaConfluent.NewConsumer(kafkaConfluent.GetConfig().GetKafkaConfig(), log.GetLogger())
 
-	// counter
-	passangerQueryMongoRepo := driverRepoQueries.NewQueryMongodbRepository(mongodb.NewMongoDBLogger(mongodb.GetSlaveConn(), mongodb.GetSlaveDBName(), log.GetLogger()))
-	passangerCommandRepo := driverRepoCommands.NewCommandMongodbRepository(mongodb.NewMongoDBLogger(mongodb.GetSlaveConn(), mongodb.GetSlaveDBName(), log.GetLogger()))
-	passangerCommandUsecase := driverUsecase.NewCommandUsecase(passangerQueryMongoRepo, passangerCommandRepo, redisClient)
-	passangerConsumer, errCounter := kafkaConfluent.NewConsumer(kafkaConfluent.GetConfig().GetKafkaConfig(), log.GetLogger())
+	//
+	driverQueryMongoRepo := driverRepoQueries.NewQueryMongodbRepository(mongodb.NewMongoDBLogger(mongodb.GetSlaveConn(), mongodb.GetSlaveDBName(), log.GetLogger()))
+	driverCommandRepo := driverRepoCommands.NewCommandMongodbRepository(mongodb.NewMongoDBLogger(mongodb.GetSlaveConn(), mongodb.GetSlaveDBName(), log.GetLogger()))
+	driverCommandUsecase := driverUsecase.NewCommandUsecase(driverQueryMongoRepo, driverCommandRepo, redisClient)
+	driverConsumer, errDriver := kafkaConfluent.NewConsumer(kafkaConfluent.GetConfig().GetKafkaConfig(), log.GetLogger())
 
-	driverHandler.InitPassangerEventHandler(passangerCommandUsecase, passangerConsumer)
+	passangerHandler.InitPassangerEventHandler(passangerCommandUsecase, passangerConsumer)
+	driverHandler.InitPassangerEventHandler(driverCommandUsecase, driverConsumer)
 
-	if errCounter != nil {
-		log.GetLogger().Error("main", "error registerNewConsumer diary", "setConfluentEvents", errCounter.Error())
+	if errPassanger != nil {
+		log.GetLogger().Error("main", "error registerNewConsumer", "setConfluentEvents", errPassanger.Error())
+	}
+
+	if errDriver != nil {
+		log.GetLogger().Error("main", "error registerNewConsumer", "setConfluentEvents", errDriver.Error())
 	}
 }
 
 func setHttp(e *echo.Echo) {
-	redisClient := redis.GetClient()
-	e.GET("/v1/health-check", func(c echo.Context) error {
-		log.GetLogger().Info("main", "This service is running properly", "setConfluentEvents", "")
-		return utils.Response(nil, "This service is running properly", 200, c)
-	})
-
-	driverQueryMongodbRepo := driverRepoQueries.NewQueryMongodbRepository(mongodb.NewMongoDBLogger(mongodb.GetSlaveConn(), mongodb.GetSlaveDBName(), log.GetLogger()))
-	driverCommandMongodbRepo := driverRepoCommands.NewCommandMongodbRepository(mongodb.NewMongoDBLogger(mongodb.GetMasterConn(), mongodb.GetMasterDBName(), log.GetLogger()))
-
-	driverQueryUsecase := driverUsecase.NewQueryUsecase(driverQueryMongodbRepo, redisClient)
-	driverCommandUsecase := driverUsecase.NewCommandUsecase(driverQueryMongodbRepo, driverCommandMongodbRepo, redisClient)
-
-	driverHandler.InitDriverHttpHandler(e, driverQueryUsecase, driverCommandUsecase)
 }
