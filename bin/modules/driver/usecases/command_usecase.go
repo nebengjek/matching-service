@@ -61,7 +61,6 @@ func (c *commandUsecase) PickupPassanger(ctx context.Context, userId string, pay
 		log.GetLogger().Error("command_usecase", errObj.Message, "PickupPassanger", utils.ConvertString(trip.Error))
 		return result
 	}
-	fmt.Println(utils.ConvertString(trip.Data), ">>>>>tripOrder")
 
 	tripOrder := trip.Data.(orderModel.TripOrder)
 	if tripOrder.DriverID != "" {
