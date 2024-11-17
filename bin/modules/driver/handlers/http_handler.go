@@ -3,6 +3,8 @@ package handlers
 import (
 	"matching-service/bin/middlewares"
 	driver "matching-service/bin/modules/driver"
+	"matching-service/bin/modules/driver/models"
+
 	"matching-service/bin/pkg/utils"
 
 	"github.com/labstack/echo/v4"
@@ -20,11 +22,26 @@ func InitDriverHttpHandler(e *echo.Echo, uq driver.UsecaseQuery, uc driver.Useca
 		driverUseCaseCommand: uc,
 	}
 	route := e.Group("/driver")
-	route.GET("/v1/detail-trip", handler.DetailTrip, middlewares.VerifyBearer)
+	route.POST("/v1/pickup-passanger", handler.PickupPassanger, middlewares.VerifyBearer)
 
 }
 
-func (u driverHttpHandler) DetailTrip(c echo.Context) error {
+func (u driverHttpHandler) PickupPassanger(c echo.Context) error {
+	var request models.PickupPassanger
+	if err := c.Bind(&request); err != nil {
+		return utils.ResponseError(err, c)
+	}
 
-	return utils.Response("", "update beacon", 200, c)
+	if err := request.Validate(); err != nil {
+		return utils.ResponseError(err, c)
+	}
+
+	userId := utils.ConvertString(c.Get("userId"))
+	result := u.driverUseCaseCommand.PickupPassanger(c.Request().Context(), userId, request)
+
+	if result.Error != nil {
+		return utils.ResponseError(result.Error, c)
+	}
+
+	return utils.Response(result.Data, "update beacon", 200, c)
 }

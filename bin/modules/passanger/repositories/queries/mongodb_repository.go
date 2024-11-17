@@ -48,3 +48,42 @@ func (q queryMongodbRepository) FindDriver(ctx context.Context, driverId string)
 
 	return output
 }
+
+func (q queryMongodbRepository) FindOrderPassanger(ctx context.Context, passangerId string) <-chan utils.Result {
+	output := make(chan utils.Result)
+
+	go func() {
+		defer close(output)
+		var driver models.TripOrder
+		err := q.mongoDb.FindOne(mongodb.FindOne{
+			Result:         &driver,
+			CollectionName: "trip-orders",
+			Filter: bson.M{
+				"passangerId": passangerId,
+				"$or": []bson.M{
+					{
+						"status": bson.M{"$ne": "completed"},
+					},
+					{
+						"status": bson.M{"$ne": "ontheway"},
+					},
+					{
+						"status": "request-pickup",
+					},
+				},
+			},
+		}, ctx)
+		if err != nil {
+			output <- utils.Result{
+				Error: err,
+			}
+		}
+
+		output <- utils.Result{
+			Data: driver,
+		}
+
+	}()
+
+	return output
+}

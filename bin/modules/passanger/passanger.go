@@ -1,4 +1,4 @@
-package user
+package passanger
 
 import (
 	"context"
@@ -21,9 +21,12 @@ type UsecaseCommand interface {
 type MongodbRepositoryQuery interface {
 	// idiomatic go, ctx first before payload. See https://pkg.go.dev/context#pkg-overview
 	FindDriver(ctx context.Context, driverId string) <-chan utils.Result
+	FindOrderPassanger(ctx context.Context, passangerId string) <-chan utils.Result
 }
 
 type MongodbRepositoryCommand interface {
 	// idiomatic go, ctx first before payload. See https://pkg.go.dev/context#pkg-overview
 	NewObjectID(ctx context.Context) string
+	CreateTripOrder(ctx context.Context, payload models.TripOrder) <-chan utils.Result
+	UpdateOneTripOrder(ctx context.Context, payload models.TripOrder) <-chan utils.Result
 }

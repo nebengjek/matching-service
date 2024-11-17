@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	driver "matching-service/bin/modules/passanger"
 	"matching-service/bin/modules/passanger/models"
@@ -12,6 +13,7 @@ import (
 	"matching-service/bin/pkg/utils"
 
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/exp/rand"
 )
 
 type commandUsecase struct {
@@ -31,7 +33,58 @@ func NewCommandUsecase(mq driver.MongodbRepositoryQuery, mc driver.MongodbReposi
 }
 
 func (c *commandUsecase) BroadcastPickupPassanger(ctx context.Context, payload models.RequestRide) error {
+	// creat cart order, updated if no driver take pickup
+	orderData := <-c.driverRepositoryQuery.FindOrderPassanger(ctx, payload.UserId)
+	if orderData.Error == nil {
+		// create new
+		seed := uint64(time.Now().UnixNano())
+		rand.Seed(seed)
+		orderID := utils.GenerateOrderID("TRIP")
+		trip := models.TripOrder{
+			OrderID:     orderID,
+			PassengerID: payload.UserId,
+			Origin: models.Location{
+				Latitude:  payload.RouteSummary.Route.Origin.Latitude,
+				Longitude: payload.RouteSummary.Route.Origin.Longitude,
+				Address:   payload.RouteSummary.Route.Origin.Address,
+			},
+			Destination: models.Location{
+				Latitude:  payload.RouteSummary.Route.Destination.Latitude,
+				Longitude: payload.RouteSummary.Route.Destination.Longitude,
+				Address:   payload.RouteSummary.Route.Destination.Address,
+			},
+			Status:        "request-pickup",
+			CreatedAt:     time.Now(),
+			UpdatedAt:     time.Now(),
+			EstimatedFare: payload.RouteSummary.BestRoutePrice,
+			DistanceKm:    payload.RouteSummary.BestRouteKm,
+		}
+		orderCreated := <-c.driverRepositoryCommand.CreateTripOrder(ctx, trip)
+		if orderCreated.Error != nil {
+			log.GetLogger().Error("command_usecase", fmt.Sprintf("Error create order: %v", orderCreated.Error), "BroadcastPickupPassanger", utils.ConvertString(orderCreated.Error))
+		}
+	} else {
+		tripOrder := orderData.Data.(models.TripOrder)
+		tripOrder.Origin = models.Location{
+			Latitude:  payload.RouteSummary.Route.Origin.Latitude,
+			Longitude: payload.RouteSummary.Route.Origin.Longitude,
+			Address:   payload.RouteSummary.Route.Origin.Address,
+		}
+		tripOrder.Destination = models.Location{
+			Latitude:  payload.RouteSummary.Route.Destination.Latitude,
+			Longitude: payload.RouteSummary.Route.Destination.Longitude,
+			Address:   payload.RouteSummary.Route.Destination.Address,
+		}
+		tripOrder.EstimatedFare = payload.RouteSummary.BestRoutePrice
+		tripOrder.DistanceKm = payload.RouteSummary.BestRouteKm
+		tripOrder.CreatedAt = time.Now()
+		tripOrder.UpdatedAt = time.Now()
 
+		orderUpdate := <-c.driverRepositoryCommand.UpdateOneTripOrder(ctx, tripOrder)
+		if orderUpdate.Error != nil {
+			log.GetLogger().Error("command_usecase", fmt.Sprintf("Error update order: %v", orderUpdate.Error), "BroadcastPickupPassanger", utils.ConvertString(orderUpdate.Error))
+		}
+	}
 	radius := 1.0
 	drivers, err := c.redisClient.GeoRadius(ctx, "drivers-locations", payload.RouteSummary.Route.Origin.Longitude, payload.RouteSummary.Route.Origin.Latitude, &redis.GeoRadiusQuery{
 		Radius:    radius,
@@ -63,6 +116,7 @@ func (c *commandUsecase) BroadcastPickupPassanger(ctx context.Context, payload m
 				DriverID:     driverMatch.DriverID,
 				SocketID:     dataDriver.SocketID,
 				RouteSummary: payload.RouteSummary,
+				PassangerID:  payload.UserId,
 			}
 			marshaledData, _ := json.Marshal(kafkaData)
 			log.GetLogger().Info("command_usecase", "marshaled", "kafkaProducer", utils.ConvertString(marshaledData))

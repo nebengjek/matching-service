@@ -1,26 +1,15 @@
 package models
 
-import (
-	"time"
-)
+import "matching-service/bin/pkg/validator"
 
-type User struct {
+type PickupPassanger struct {
+	PassangerID string `json:"passangerId" bson:"passangerId"`
+}
+
+type Driver struct {
 	Id           string `json:"_id" bson:"_id"`
 	FullName     string `json:"fullName" bson:"fullName" validate:"required,min=3,max=100"`
 	MobileNumber string `json:"mobileNumber" bson:"mobileNumber" validate:"required"`
-	Completed    bool   `'json:"completed" bson:"completed"`
-}
-
-type WorkLog struct {
-	DriverID string        `bson:"driverId" json:"driverId"`
-	WorkDate string        `bson:"workdate" json:"workdate"`
-	Log      []LogActivity `bson:"log" json:"log"`
-}
-
-type LogActivity struct {
-	WorkTime time.Time `bson:"worktime" json:"worktime"`
-	Active   bool      `bson:"active" json:"active"`
-	Status   string    `bson:"status" json:"status"`
 }
 
 type LocationRequest struct {
@@ -55,16 +44,15 @@ type DriverAvailable struct {
 	Available bool     `json:"available" bson:"available"`
 }
 
-type BroadcastPickupPassanger struct {
-	RouteSummary RouteSummary `json:"routeSummary" bson:"routeSummary"`
-	DriverID     string       `json:"driverId" bson:"driverId"`
-	SocketID     string       `json:"socketId" bson:"socketId"`
-}
-
 type DriverMatch struct {
 	DriverID  string  `json:"Name"`
 	Longitude float64 `json:"Longitude"`
 	Latitude  float64 `json:"Latitude"`
 	Dist      float64 `json:"Dist"`
 	GeoHash   int32   `json:"GeoHash"`
+}
+
+func (r *PickupPassanger) Validate() error {
+	validate := validator.New()
+	return validate.Struct(r)
 }

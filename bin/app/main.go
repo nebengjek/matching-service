@@ -6,6 +6,7 @@ import (
 
 	"matching-service/bin/pkg/log"
 	"matching-service/bin/pkg/redis"
+	"matching-service/bin/pkg/utils"
 	"net/http"
 	"os"
 	"os/signal"
@@ -107,7 +108,7 @@ func setConfluentEvents() {
 	//
 	driverQueryMongoRepo := driverRepoQueries.NewQueryMongodbRepository(mongodb.NewMongoDBLogger(mongodb.GetSlaveConn(), mongodb.GetSlaveDBName(), log.GetLogger()))
 	driverCommandRepo := driverRepoCommands.NewCommandMongodbRepository(mongodb.NewMongoDBLogger(mongodb.GetSlaveConn(), mongodb.GetSlaveDBName(), log.GetLogger()))
-	driverCommandUsecase := driverUsecase.NewCommandUsecase(driverQueryMongoRepo, driverCommandRepo, redisClient)
+	driverCommandUsecase := driverUsecase.NewCommandUsecase(driverQueryMongoRepo, driverCommandRepo, redisClient, kafkaProducer)
 	driverConsumer, errDriver := kafkaConfluent.NewConsumer(kafkaConfluent.GetConfig().GetKafkaConfig(), log.GetLogger())
 
 	passangerHandler.InitPassangerEventHandler(passangerCommandUsecase, passangerConsumer)
@@ -123,4 +124,21 @@ func setConfluentEvents() {
 }
 
 func setHttp(e *echo.Echo) {
+	redisClient := redis.GetClient()
+	e.GET("/v1/health-check", func(c echo.Context) error {
+		log.GetLogger().Info("main", "This service is running properly", "setConfluentEvents", "")
+		return utils.Response(nil, "This service is running properly", 200, c)
+	})
+	kafkaProducer, err := kafkaConfluent.NewProducer(kafkaConfluent.GetConfig().GetKafkaConfig(), log.GetLogger())
+	if err != nil {
+		panic(err)
+	}
+
+	driverQueryMongodbRepo := driverRepoQueries.NewQueryMongodbRepository(mongodb.NewMongoDBLogger(mongodb.GetSlaveConn(), mongodb.GetSlaveDBName(), log.GetLogger()))
+	driverCommandMongodbRepo := driverRepoCommands.NewCommandMongodbRepository(mongodb.NewMongoDBLogger(mongodb.GetMasterConn(), mongodb.GetMasterDBName(), log.GetLogger()))
+
+	driverQueryUsecase := driverUsecase.NewQueryUsecase(driverQueryMongodbRepo, redisClient)
+	driverCommandUsecase := driverUsecase.NewCommandUsecase(driverQueryMongodbRepo, driverCommandMongodbRepo, redisClient, kafkaProducer)
+
+	driverHandler.InitDriverHttpHandler(e, driverQueryUsecase, driverCommandUsecase)
 }

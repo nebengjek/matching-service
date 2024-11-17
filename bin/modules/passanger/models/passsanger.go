@@ -13,6 +13,25 @@ type User struct {
 	Completed    bool   `'json:"completed" bson:"completed"`
 }
 
+type TripOrder struct {
+	OrderID       string    `json:"orderId" bson:"orderId"`
+	PassengerID   string    `json:"passengerId" bson:"passengerId"`
+	DriverID      string    `json:"driverId,omitempty" bson:"driverId,omitempty"`
+	Origin        Location  `json:"origin" bson:"origin"`
+	Destination   Location  `json:"destination" bson:"destination"`
+	Status        string    `json:"status" bson:"status"`
+	CreatedAt     time.Time `json:"createdAt" bson:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt" bson:"updatedAt"`
+	EstimatedFare float64   `json:"estimatedFare" bson:"estimatedFare"`
+	DistanceKm    float64   `json:"distanceKm" bson:"distanceKm"`
+}
+
+type Location struct {
+	Latitude  float64 `json:"latitude" bson:"latitude"`
+	Longitude float64 `json:"longitude" bson:"longitude"`
+	Address   string  `json:"address" bson:"address"`
+}
+
 type DriverAvailable struct {
 	ID       primitive.ObjectID `bson:"_id,omitempty"`
 	DriverID string             `bson:"driverId"`
@@ -35,6 +54,7 @@ type LogActivity struct {
 type LocationRequest struct {
 	Longitude float64 `json:"longitude" validate:"required"`
 	Latitude  float64 `json:"latitude" validate:"required"`
+	Address   string  `json:"address" validate:"required"`
 }
 
 type Route struct {
@@ -60,6 +80,7 @@ type BroadcastPickupPassanger struct {
 	RouteSummary RouteSummary `json:"routeSummary" bson:"routeSummary"`
 	DriverID     string       `json:"driverId" bson:"driverId"`
 	SocketID     string       `json:"socketId" bson:"socketId"`
+	PassangerID  string       `json:"passangerId" bson:"passangerId"`
 }
 
 type DriverMatch struct {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/exp/rand"
 )
 
 // ConvertString to convert any data type to String
@@ -165,4 +166,22 @@ func FormatDuration(minutes int) string {
 	}
 
 	return fmt.Sprintf("%d jam", hours)
+}
+
+const letterBytes = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+func GenerateRandomString(length int) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
+
+func GenerateOrderID(prefix string) string {
+	now := time.Now()
+	timestamp := now.Format("20060102150405")
+	randomString := GenerateRandomString(6)
+
+	return fmt.Sprintf("%s-%s-%s", prefix, timestamp, randomString)
 }
