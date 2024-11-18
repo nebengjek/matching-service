@@ -63,15 +63,15 @@ func (c commandMongodbRepository) CreateTripOrder(ctx context.Context, data mode
 	return output
 }
 
-func (c commandMongodbRepository) UpdateOneTripOrder(ctx context.Context, data models.TripOrder) <-chan utils.Result {
+func (c commandMongodbRepository) UpdateOneTripOrder(ctx context.Context, orderId string, data models.TripOrder) <-chan utils.Result {
 	output := make(chan utils.Result)
 
 	go func() {
 		defer close(output)
-		err := c.mongoDb.UpdateOne(mongodb.UpdateOne{
+		err := c.mongoDb.UpsertOne(mongodb.UpsertOne{
 			CollectionName: "trip-orders",
 			Filter: bson.M{
-				"orderId": data.OrderID,
+				"orderId": orderId,
 			},
 			Document: bson.M{
 				"passengerId":   data.PassengerID,

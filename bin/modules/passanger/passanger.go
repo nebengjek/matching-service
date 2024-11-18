@@ -28,5 +28,5 @@ type MongodbRepositoryCommand interface {
 	// idiomatic go, ctx first before payload. See https://pkg.go.dev/context#pkg-overview
 	NewObjectID(ctx context.Context) string
 	CreateTripOrder(ctx context.Context, payload models.TripOrder) <-chan utils.Result
-	UpdateOneTripOrder(ctx context.Context, payload models.TripOrder) <-chan utils.Result
+	UpdateOneTripOrder(ctx context.Context, orderID string, payload models.TripOrder) <-chan utils.Result
 }

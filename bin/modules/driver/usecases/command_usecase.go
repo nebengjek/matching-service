@@ -90,3 +90,55 @@ func (c *commandUsecase) PickupPassanger(ctx context.Context, userId string, pay
 	result.Data = tripOrder
 	return result
 }
+
+func (c *commandUsecase) CompletedTrip(ctx context.Context, userId string, payload models.Trip) utils.Result {
+	var result utils.Result
+	trip := <-c.driverRepositoryQuery.FindActiveOrderPassanger(ctx, payload.OrderID)
+	if trip.Error != nil {
+		errObj := httpError.NewNotFound()
+		errObj.Message = "The order has Notfound"
+		result.Error = errObj
+		log.GetLogger().Error("command_usecase", errObj.Message, "CompletedTrip", utils.ConvertString(trip.Error))
+		return result
+	}
+
+	tripOrder := trip.Data.(orderModel.TripOrder)
+	tripOrder.UpdatedAt = time.Now()
+	tripOrder.Status = "completed"
+
+	var tracker models.TripTracker
+
+	key := fmt.Sprintf("trip:%s", payload.OrderID)
+	driverTracker, errRedis := c.redisClient.Get(ctx, key).Result()
+	if errRedis != nil || driverTracker == "" {
+		errObj := httpError.NewNotFound()
+		errObj.Message = fmt.Sprintf("Error get data from redis: %v", errRedis)
+		result.Error = errObj
+		log.GetLogger().Error("command_usecase", errObj.Message, "CompletedTrip", utils.ConvertString(errRedis))
+		return result
+	}
+	err := json.Unmarshal([]byte(driverTracker), &tracker)
+	if err != nil {
+		errObj := httpError.NewInternalServerError()
+		errObj.Message = fmt.Sprintf("Error unmarshal tripdata: %v", err)
+		result.Error = errObj
+		log.GetLogger().Error("command_usecase", errObj.Message, "CompletedTrip", utils.ConvertString(err))
+		return result
+	}
+	// update to mongodb
+	orderUpdate := <-c.driverRepositoryCommand.CompletedTripOrder(ctx, tripOrder, tracker)
+	if orderUpdate.Error != nil {
+		errObj := httpError.NewInternalServerError()
+		errObj.Message = fmt.Sprintf("Internal server error update to db: %v", orderUpdate.Error)
+		result.Error = errObj
+		log.GetLogger().Error("command_usecase", fmt.Sprintf("Error update order: %v", orderUpdate.Error), "CompletedTrip", utils.ConvertString(orderUpdate.Error))
+		return result
+	}
+	//
+
+	marshaledData, _ := json.Marshal(tripOrder)
+	log.GetLogger().Info("command_usecase", "marshaled", "kafkaProducer", utils.ConvertString(marshaledData))
+	c.kafkaProducer.Publish("trip-created", marshaledData)
+	result.Data = tripOrder
+	return result
+}

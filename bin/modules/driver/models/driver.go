@@ -6,6 +6,15 @@ type PickupPassanger struct {
 	PassangerID string `json:"passangerId" bson:"passangerId"`
 }
 
+type TripTracker struct {
+	Data DataTrip `json:"data"`
+}
+
+type DataTrip struct {
+	DriverID string `json:"driverId" bson:"driverId"`
+	Distance string `json:"distance" bson:"distance"`
+}
+
 type Driver struct {
 	Id           string `json:"_id" bson:"_id"`
 	FullName     string `json:"fullName" bson:"fullName" validate:"required,min=3,max=100"`
@@ -50,6 +59,10 @@ type DriverMatch struct {
 	Latitude  float64 `json:"Latitude"`
 	Dist      float64 `json:"Dist"`
 	GeoHash   int32   `json:"GeoHash"`
+}
+
+type Trip struct {
+	OrderID string `json:"orderId" bson:"orderId" validate:"required"`
 }
 
 func (r *PickupPassanger) Validate() error {

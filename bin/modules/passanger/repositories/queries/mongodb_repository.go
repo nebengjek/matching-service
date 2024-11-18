@@ -59,7 +59,7 @@ func (q queryMongodbRepository) FindOrderPassanger(ctx context.Context, passange
 			Result:         &driver,
 			CollectionName: "trip-orders",
 			Filter: bson.M{
-				"passangerId": passangerId,
+				"passengerId": passangerId,
 				"$or": []bson.M{
 					{
 						"status": bson.M{"$ne": "completed"},
@@ -78,7 +78,6 @@ func (q queryMongodbRepository) FindOrderPassanger(ctx context.Context, passange
 				Error: err,
 			}
 		}
-
 		output <- utils.Result{
 			Data: driver,
 		}

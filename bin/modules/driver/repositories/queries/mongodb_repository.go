@@ -86,3 +86,29 @@ func (q queryMongodbRepository) FindOrderPassanger(ctx context.Context, passange
 
 	return output
 }
+
+func (q queryMongodbRepository) FindActiveOrderPassanger(ctx context.Context, orderId string) <-chan utils.Result {
+	output := make(chan utils.Result)
+	go func() {
+		defer close(output)
+		var trip order.TripOrder
+		err := q.mongoDb.FindOne(mongodb.FindOne{
+			Result:         &trip,
+			CollectionName: "trip-orders",
+			Filter: bson.M{
+				"orderId": orderId,
+			},
+		}, ctx)
+		if err != nil {
+			output <- utils.Result{
+				Error: err,
+			}
+		}
+		output <- utils.Result{
+			Data: trip,
+		}
+
+	}()
+
+	return output
+}
