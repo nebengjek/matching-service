@@ -19,6 +19,7 @@ type UsecaseCommand interface {
 
 type MongodbRepositoryQuery interface {
 	FindDriver(ctx context.Context, userId string) <-chan utils.Result
+	FindDriverAvailable(ctx context.Context, userId string) <-chan utils.Result
 	FindOrderPassanger(ctx context.Context, psgId string) <-chan utils.Result
 	FindActiveOrderPassanger(ctx context.Context, psgId string) <-chan utils.Result
 }

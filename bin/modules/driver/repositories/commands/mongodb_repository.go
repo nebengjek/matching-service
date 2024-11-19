@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"strconv"
 
 	user "matching-service/bin/modules/driver"
 	"matching-service/bin/modules/driver/models"
@@ -96,6 +97,7 @@ func (c commandMongodbRepository) UpdateOneTripOrder(ctx context.Context, data o
 
 func (c commandMongodbRepository) CompletedTripOrder(ctx context.Context, data order.TripOrder, trip models.TripTracker) <-chan utils.Result {
 	output := make(chan utils.Result)
+	realDistance, _ := strconv.ParseFloat(trip.Data.Distance, 64)
 	go func() {
 		defer close(output)
 		err := c.mongoDb.UpdateOne(mongodb.UpdateOne{
@@ -113,7 +115,7 @@ func (c commandMongodbRepository) CompletedTripOrder(ctx context.Context, data o
 				"updatedAt":     data.UpdatedAt,
 				"estimatedFare": data.EstimatedFare,
 				"distanceKm":    data.DistanceKm,
-				"realDistance":  trip.Data.Distance,
+				"realDistance":  realDistance,
 			},
 		}, ctx)
 		if err != nil {

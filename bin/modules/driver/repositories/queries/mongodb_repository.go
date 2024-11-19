@@ -21,6 +21,34 @@ func NewQueryMongodbRepository(mongodb mongodb.MongoDBLogger) driver.MongodbRepo
 	}
 }
 
+func (q queryMongodbRepository) FindDriverAvailable(ctx context.Context, driverId string) <-chan utils.Result {
+	output := make(chan utils.Result)
+
+	go func() {
+		defer close(output)
+		var driver models.StatusDriver
+		err := q.mongoDb.FindOne(mongodb.FindOne{
+			Result:         &driver,
+			CollectionName: "driver-available",
+			Filter: bson.M{
+				"driverId": driverId,
+			},
+		}, ctx)
+		if err != nil {
+			output <- utils.Result{
+				Error: err,
+			}
+		}
+
+		output <- utils.Result{
+			Data: driver,
+		}
+
+	}()
+
+	return output
+}
+
 func (q queryMongodbRepository) FindDriver(ctx context.Context, userId string) <-chan utils.Result {
 	output := make(chan utils.Result)
 

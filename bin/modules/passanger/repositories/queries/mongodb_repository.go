@@ -32,6 +32,7 @@ func (q queryMongodbRepository) FindDriver(ctx context.Context, driverId string)
 			CollectionName: "driver-available",
 			Filter: bson.M{
 				"driverId": driverId,
+				"status":   true,
 			},
 		}, ctx)
 		if err != nil {

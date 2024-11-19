@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	driver "matching-service/bin/modules/driver"
@@ -82,9 +83,31 @@ func (c *commandUsecase) PickupPassanger(ctx context.Context, userId string, pay
 		log.GetLogger().Error("command_usecase", fmt.Sprintf("Error update order: %v", orderUpdate.Error), "PickupPassanger", utils.ConvertString(orderUpdate.Error))
 		return result
 	}
+	driverAvailable := <-c.driverRepositoryQuery.FindDriverAvailable(ctx, driver.Id)
+	statusDriver := driverAvailable.Data.(models.StatusDriver)
+	pylDriverAvailable := models.DriverAvailable{
+		MetaData: models.MetaData{
+			SenderID: statusDriver.SocketID,
+			DriverID: driver.Id,
+		},
+		Available: false,
+	}
+	UpdateStatusDriver := <-c.driverRepositoryCommand.UpsertDriver(ctx, pylDriverAvailable)
+	if UpdateStatusDriver.Error != nil {
+		log.GetLogger().Error("command_usecase", fmt.Sprintf("Error update status driver: %v", UpdateStatusDriver.Error), "PickupPassanger", utils.ConvertString(UpdateStatusDriver.Error))
+	}
 	//
 
 	marshaledData, _ := json.Marshal(tripOrder)
+	key := fmt.Sprintf("DRIVER:PICKING-PASSANGER:%s", driver.Id)
+	redisErr := c.redisClient.Set(ctx, key, marshaledData, 2*time.Hour).Err()
+	if redisErr != nil {
+		errObj := httpError.NewInternalServerError()
+		errObj.Message = fmt.Sprintf("Internal server error insert to redis: %v", redisErr.Error())
+		result.Error = errObj
+		log.GetLogger().Error("command_usecase", errObj.Message, "PickupPassanger", utils.ConvertString(redisErr.Error()))
+		return result
+	}
 	log.GetLogger().Info("command_usecase", "marshaled", "kafkaProducer", utils.ConvertString(marshaledData))
 	c.kafkaProducer.Publish("trip-created", marshaledData)
 	result.Data = tripOrder
@@ -135,10 +158,24 @@ func (c *commandUsecase) CompletedTrip(ctx context.Context, userId string, paylo
 		return result
 	}
 	//
-
+	realDistance, _ := strconv.ParseFloat(tracker.Data.Distance, 64)
+	keyStatusDriver := fmt.Sprintf("DRIVER:PICKING-PASSANGER:%s", tripOrder.DriverID)
+	c.redisClient.Del(ctx, keyStatusDriver)
+	var dataEvent models.TripOrderCompleted
+	dataEvent.FarePercentage = payload.FarePercentage
+	dataEvent.OrderID = payload.OrderID
+	dataEvent.RealDistance = realDistance
+	marshaledBilling, _ := json.Marshal(dataEvent)
 	marshaledData, _ := json.Marshal(tripOrder)
-	log.GetLogger().Info("command_usecase", "marshaled", "kafkaProducer", utils.ConvertString(marshaledData))
 	c.kafkaProducer.Publish("trip-created", marshaledData)
+	c.kafkaProducer.Publish("create-billing", marshaledBilling)
 	result.Data = tripOrder
 	return result
+}
+
+func CalculateFinalFare(baseFare, discountPercentage float64) (totalFare, adminFee, driverEarnings float64) {
+	totalFare = baseFare * (discountPercentage / 100)
+	adminFee = totalFare * 0.05
+	driverEarnings = totalFare - adminFee
+	return
 }
