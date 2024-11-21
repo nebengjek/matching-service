@@ -21,7 +21,7 @@ func InitDriverHttpHandler(e *echo.Echo, uq driver.UsecaseQuery, uc driver.Useca
 		driverUseCaseCommand: uc,
 	}
 	route := e.Group("/driver")
-	route.GET("/v1/detail-trip", handler.DetailTrip, middlewares.VerifyBearer)
+	route.GET("/v1/trip-request", handler.DetailTrip, middlewares.VerifyBearer)
 
 }
 
