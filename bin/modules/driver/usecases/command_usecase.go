@@ -74,6 +74,8 @@ func (c *commandUsecase) PickupPassanger(ctx context.Context, userId string, pay
 	tripOrder.DriverID = driver.Id
 	tripOrder.UpdatedAt = time.Now()
 	tripOrder.Status = "ontheway"
+	fmt.Println(tripOrder, "3")
+
 	// update to mongodb
 	orderUpdate := <-c.driverRepositoryCommand.UpdateOneTripOrder(ctx, tripOrder)
 	if orderUpdate.Error != nil {
@@ -171,11 +173,4 @@ func (c *commandUsecase) CompletedTrip(ctx context.Context, userId string, paylo
 	c.kafkaProducer.Publish("create-billing", marshaledBilling)
 	result.Data = tripOrder
 	return result
-}
-
-func CalculateFinalFare(baseFare, discountPercentage float64) (totalFare, adminFee, driverEarnings float64) {
-	totalFare = baseFare * (discountPercentage / 100)
-	adminFee = totalFare * 0.05
-	driverEarnings = totalFare - adminFee
-	return
 }

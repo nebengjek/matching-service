@@ -9,6 +9,7 @@ import (
 )
 
 type UsecaseQuery interface {
+	DetailTrip(ctx context.Context, userId string, orderId string) utils.Result
 }
 
 type UsecaseCommand interface {

@@ -74,6 +74,7 @@ func (q queryMongodbRepository) FindOrderPassanger(ctx context.Context, passange
 				},
 			},
 		}, ctx)
+
 		if err != nil {
 			output <- utils.Result{
 				Error: err,

@@ -24,6 +24,7 @@ func InitDriverHttpHandler(e *echo.Echo, uq driver.UsecaseQuery, uc driver.Useca
 	route := e.Group("/driver")
 	route.POST("/v1/pickup-passanger", handler.PickupPassanger, middlewares.VerifyBearer)
 	route.POST("/v1/complete-trip", handler.CompletedTrip, middlewares.VerifyBearer)
+	route.POST("/v1/detail-trip/:orderId", handler.DetailTrip, middlewares.VerifyBearer)
 
 }
 
@@ -66,4 +67,16 @@ func (u driverHttpHandler) CompletedTrip(c echo.Context) error {
 	}
 
 	return utils.Response(result.Data, "completed trip", 200, c)
+}
+
+func (u driverHttpHandler) DetailTrip(c echo.Context) error {
+	orderId := c.Param("orderId")
+	userId := utils.ConvertString(c.Get("userId"))
+	result := u.driverUsecaseQuery.DetailTrip(c.Request().Context(), userId, orderId)
+
+	if result.Error != nil {
+		return utils.ResponseError(result.Error, c)
+	}
+
+	return utils.Response(result.Data, "Get Detail Trip", 200, c)
 }

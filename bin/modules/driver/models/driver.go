@@ -44,6 +44,23 @@ type RouteSummary struct {
 	BestRouteDuration string  `json:"bestRouteDuration"`
 }
 
+type Location struct {
+	Latitude  float64 `json:"latitude" bson:"latitude"`
+	Longitude float64 `json:"longitude" bson:"longitude"`
+	Address   string  `json:"address" bson:"address"`
+}
+
+type TripResponse struct {
+	OrderID       string   `json:"orderId" bson:"orderId"`
+	RealDistance  float64  `json:"realDistance" bson:"realDistance"`
+	PassengerID   string   `json:"passengerId" bson:"passengerId"`
+	Origin        Location `json:"origin" bson:"origin"`
+	Destination   Location `json:"destination" bson:"destination"`
+	Status        string   `json:"status" bson:"status"`
+	Price         float64  `json:"estimatedFare" bson:"estimatedFare"`
+	DriverEarning float64  `json:"driverEarning" bson:"driveEarning"`
+}
+
 type TripOrderCompleted struct {
 	OrderID        string  `json:"orderId" bson:"orderId"`
 	RealDistance   float64 `json:"realDistance" bson:"realDistance"`

@@ -35,7 +35,7 @@ func NewCommandUsecase(mq driver.MongodbRepositoryQuery, mc driver.MongodbReposi
 func (c *commandUsecase) BroadcastPickupPassanger(ctx context.Context, payload models.RequestRide) error {
 	// creat cart order, updated if no driver take pickup
 	orderData := <-c.driverRepositoryQuery.FindOrderPassanger(ctx, payload.UserId)
-	if orderData.Data == nil {
+	if orderData.Error != nil {
 		// create new
 		seed := uint64(time.Now().UnixNano())
 		rand.Seed(seed)
