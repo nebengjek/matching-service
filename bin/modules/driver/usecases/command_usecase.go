@@ -74,7 +74,6 @@ func (c *commandUsecase) PickupPassanger(ctx context.Context, userId string, pay
 	tripOrder.DriverID = driver.Id
 	tripOrder.UpdatedAt = time.Now()
 	tripOrder.Status = "ontheway"
-	fmt.Println(tripOrder, "3")
 
 	// update to mongodb
 	orderUpdate := <-c.driverRepositoryCommand.UpdateOneTripOrder(ctx, tripOrder)
