@@ -88,17 +88,7 @@ func (q queryMongodbRepository) FindOrderPassanger(ctx context.Context, passange
 			CollectionName: "trip-orders",
 			Filter: bson.M{
 				"passengerId": passangerId,
-				"$or": []bson.M{
-					{
-						"status": bson.M{"$ne": "completed"},
-					},
-					{
-						"status": bson.M{"$ne": "ontheway"},
-					},
-					{
-						"status": "request-pickup",
-					},
-				},
+				"status":      "request-pickup",
 			},
 		}, ctx)
 		if err != nil {
