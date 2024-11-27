@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.1](https://github.com/nebengjek/matching-service/compare/v1.1.0...v1.1.1) (2024-11-27)
+
+
+### Bug Fixes
+
+* adjust logic new order some user ([6a3da6a](https://github.com/nebengjek/matching-service/commit/6a3da6abcab8f3f474fc187bde53ca850b2ed477))
+* missing remove debug ([ac0a33f](https://github.com/nebengjek/matching-service/commit/ac0a33f7a7ada9ece8f988b0bcc394cc283db6a3))
+
 ## 1.1.0 (2024-11-21)
 
 
