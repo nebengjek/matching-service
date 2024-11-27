@@ -55,23 +55,13 @@ func (q queryMongodbRepository) FindOrderPassanger(ctx context.Context, passange
 
 	go func() {
 		defer close(output)
-		var driver models.TripOrder
-		err := q.mongoDb.FindOne(mongodb.FindOne{
-			Result:         &driver,
+		var tripOrder []models.TripOrder
+		err := q.mongoDb.FindAllData(mongodb.FindAllData{
+			Result:         &tripOrder,
 			CollectionName: "trip-orders",
 			Filter: bson.M{
 				"passengerId": passangerId,
-				"$or": []bson.M{
-					{
-						"status": bson.M{"$ne": "completed"},
-					},
-					{
-						"status": bson.M{"$ne": "ontheway"},
-					},
-					{
-						"status": "request-pickup",
-					},
-				},
+				"status":      bson.M{"$ne": "ontheway"},
 			},
 		}, ctx)
 
@@ -81,7 +71,7 @@ func (q queryMongodbRepository) FindOrderPassanger(ctx context.Context, passange
 			}
 		}
 		output <- utils.Result{
-			Data: driver,
+			Data: tripOrder,
 		}
 
 	}()

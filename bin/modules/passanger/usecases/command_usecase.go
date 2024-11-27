@@ -34,6 +34,10 @@ func NewCommandUsecase(mq driver.MongodbRepositoryQuery, mc driver.MongodbReposi
 
 func (c *commandUsecase) BroadcastPickupPassanger(ctx context.Context, payload models.RequestRide) error {
 	// creat cart order, updated if no driver take pickup
+	var hasCompletedOrder bool
+	var hasRequestPickup bool
+	var completedCount int
+
 	orderData := <-c.driverRepositoryQuery.FindOrderPassanger(ctx, payload.UserId)
 	if orderData.Error != nil {
 		// create new
@@ -64,8 +68,33 @@ func (c *commandUsecase) BroadcastPickupPassanger(ctx context.Context, payload m
 			log.GetLogger().Error("command_usecase", fmt.Sprintf("Error create order: %v", orderCreated.Error), "BroadcastPickupPassanger", utils.ConvertString(orderCreated.Error))
 		}
 	} else {
-		tripOrder := orderData.Data.(models.TripOrder)
-		if tripOrder.Status == "completed" {
+		if response, ok := orderData.Data.(struct {
+			Orders []models.TripOrder
+		}); ok {
+			for _, tripOrder := range response.Orders {
+				if tripOrder.Status == "completed" {
+					completedCount++
+				}
+				if tripOrder.Status == "request-pickup" {
+					hasRequestPickup = true
+				}
+			}
+		} else {
+			// Fallback to direct array access
+			if orders, ok := orderData.Data.([]models.TripOrder); ok {
+				for _, tripOrder := range orders {
+					if tripOrder.Status == "completed" {
+						completedCount++
+					}
+					if tripOrder.Status == "request-pickup" {
+						hasRequestPickup = true
+					}
+				}
+			}
+		}
+		hasCompletedOrder = (completedCount > 1 && !hasRequestPickup) ||
+			(completedCount == 1 && !hasRequestPickup)
+		if hasCompletedOrder {
 			seed := uint64(time.Now().UnixNano())
 			rand.Seed(seed)
 			orderID := utils.GenerateOrderID("TRIP")
@@ -93,24 +122,62 @@ func (c *commandUsecase) BroadcastPickupPassanger(ctx context.Context, payload m
 				log.GetLogger().Error("command_usecase", fmt.Sprintf("Error create order: %v", orderCreated.Error), "BroadcastPickupPassanger", utils.ConvertString(orderCreated.Error))
 			}
 		} else {
-			tripOrder.Origin = models.Location{
-				Latitude:  payload.RouteSummary.Route.Origin.Latitude,
-				Longitude: payload.RouteSummary.Route.Origin.Longitude,
-				Address:   payload.RouteSummary.Route.Origin.Address,
-			}
-			tripOrder.Destination = models.Location{
-				Latitude:  payload.RouteSummary.Route.Destination.Latitude,
-				Longitude: payload.RouteSummary.Route.Destination.Longitude,
-				Address:   payload.RouteSummary.Route.Destination.Address,
-			}
-			tripOrder.EstimatedFare = payload.RouteSummary.BestRoutePrice
-			tripOrder.DistanceKm = payload.RouteSummary.BestRouteKm
-			tripOrder.CreatedAt = time.Now()
-			tripOrder.UpdatedAt = time.Now()
+			if response, ok := orderData.Data.(struct {
+				Orders []models.TripOrder
+			}); ok {
+				for _, tripOrder := range response.Orders {
+					if tripOrder.Status == "requestpickup" {
+						// Update trip order details
+						tripOrder.Origin = models.Location{
+							Latitude:  payload.RouteSummary.Route.Origin.Latitude,
+							Longitude: payload.RouteSummary.Route.Origin.Longitude,
+							Address:   payload.RouteSummary.Route.Origin.Address,
+						}
+						tripOrder.Destination = models.Location{
+							Latitude:  payload.RouteSummary.Route.Destination.Latitude,
+							Longitude: payload.RouteSummary.Route.Destination.Longitude,
+							Address:   payload.RouteSummary.Route.Destination.Address,
+						}
+						tripOrder.EstimatedFare = payload.RouteSummary.BestRoutePrice
+						tripOrder.DistanceKm = payload.RouteSummary.BestRouteKm
+						tripOrder.UpdatedAt = time.Now()
 
-			orderUpdate := <-c.driverRepositoryCommand.UpdateOneTripOrder(ctx, tripOrder.OrderID, tripOrder)
-			if orderUpdate.Error != nil {
-				log.GetLogger().Error("command_usecase", fmt.Sprintf("Error update order: %v", orderUpdate.Error), "BroadcastPickupPassanger", utils.ConvertString(orderUpdate.Error))
+						// Update order in repository
+						orderUpdated := <-c.driverRepositoryCommand.UpdateOneTripOrder(ctx, tripOrder.OrderID, tripOrder)
+						if orderUpdated.Error != nil {
+							log.GetLogger().Error("command_usecase", fmt.Sprintf("Error updating order: %v", orderUpdated.Error), "BroadcastPickupPassanger", utils.ConvertString(orderUpdated.Error))
+						}
+						break
+					}
+				}
+			} else {
+				if orders, ok := orderData.Data.([]models.TripOrder); ok {
+					for _, tripOrder := range orders {
+						if tripOrder.Status == "requestpickup" {
+							// Update trip order details
+							tripOrder.Origin = models.Location{
+								Latitude:  payload.RouteSummary.Route.Origin.Latitude,
+								Longitude: payload.RouteSummary.Route.Origin.Longitude,
+								Address:   payload.RouteSummary.Route.Origin.Address,
+							}
+							tripOrder.Destination = models.Location{
+								Latitude:  payload.RouteSummary.Route.Destination.Latitude,
+								Longitude: payload.RouteSummary.Route.Destination.Longitude,
+								Address:   payload.RouteSummary.Route.Destination.Address,
+							}
+							tripOrder.EstimatedFare = payload.RouteSummary.BestRoutePrice
+							tripOrder.DistanceKm = payload.RouteSummary.BestRouteKm
+							tripOrder.UpdatedAt = time.Now()
+
+							// Update order in repository
+							orderUpdated := <-c.driverRepositoryCommand.UpdateOneTripOrder(ctx, tripOrder.OrderID, tripOrder)
+							if orderUpdated.Error != nil {
+								log.GetLogger().Error("command_usecase", fmt.Sprintf("Error updating order: %v", orderUpdated.Error), "BroadcastPickupPassanger", utils.ConvertString(orderUpdated.Error))
+							}
+							break
+						}
+					}
+				}
 			}
 		}
 	}
